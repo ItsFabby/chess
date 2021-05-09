@@ -1,6 +1,6 @@
-import numpy as np
+# import numpy as np
 
-import constants as c
+from chess import constants as c
 
 WHITE_PIECES = ['white_pawn', 'white_knight', 'white_bishop', 'white_rook', 'white_queen', 'white_king']
 BLACK_PIECES = ['black_pawn', 'black_knight', 'black_bishop', 'black_rook', 'black_queen', 'black_king']
@@ -29,9 +29,16 @@ class Game:
         x, y = 0, 0
         for character in position_string:
             if character == '/':
+                if x < 8:
+                    raise Exception('Position not valid: Board string too short!')
+                if x > 8:
+                    raise Exception('Position not valid: Board string too long!')
                 y += 1
                 x = 0
                 continue
+
+            if x > 7 or y > 7:
+                raise Exception('Position not valid: Board string too long!')
 
             if character.isdigit():
                 x += int(character)
@@ -40,6 +47,9 @@ class Game:
             piece = self.get_piece(character)
             state, pieces = self.add_piece(piece, state, pieces, x, y)
             x += 1
+
+        if y < 7 or x < 7:
+            raise Exception('Position not valid: Board string too short!')
         return state, pieces
 
     @staticmethod
@@ -58,7 +68,7 @@ class Game:
             'k': 'black_king',
             'K': 'white_king'
         }
-        return switcher.get(character, 'empty')
+        return switcher.get(character)
 
     @staticmethod
     def add_piece(piece, state, piece_list, x, y):
@@ -82,11 +92,14 @@ class Game:
                 castle_rights['black_queen'] = True
         return castle_rights
 
+    def set_position(self, position):
+        self.game_state, self.pieces, self.player, self.castle_rights, self.en_passant = self.import_position(position)
+
 
 if __name__ == '__main__':
     game = Game()
     # print(game.game_state)
-    pos = game.import_position(c.DEFAULT_POSITION)
+    pos = game.import_position('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
     for element in pos:
         print(element)
     # print(WHITE_PIECES)
