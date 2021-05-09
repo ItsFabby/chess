@@ -29,16 +29,16 @@ class Game:
         x, y = 0, 0
         for character in position_string:
             if character == '/':
-                if x < 8:
-                    raise Exception('Position not valid: Board string too short!')
-                if x > 8:
-                    raise Exception('Position not valid: Board string too long!')
+                if x < c.COLUMNS:
+                    raise ValueError('Position not valid: Board string too short!')
+                if x > c.COLUMNS:
+                    raise ValueError('Position not valid: Board string too long!')
                 y += 1
                 x = 0
                 continue
 
-            if x > 7 or y > 7:
-                raise Exception('Position not valid: Board string too long!')
+            if x > c.COLUMNS - 1 or y > c.ROWS - 1:
+                raise ValueError('Position not valid: Board string too long!')
 
             if character.isdigit():
                 x += int(character)
@@ -48,8 +48,8 @@ class Game:
             state, pieces = self.add_piece(piece, state, pieces, x, y)
             x += 1
 
-        if y < 7 or x < 7:
-            raise Exception('Position not valid: Board string too short!')
+        if x < c.COLUMNS - 1 or y < c.ROWS - 1:
+            raise ValueError('Position not valid: Board string too short!')
         return state, pieces
 
     @staticmethod
@@ -79,27 +79,30 @@ class Game:
 
     @staticmethod
     def import_castle_rights(position_string):
-        castle_rights = {'white_king': False, 'white_queen': False,
-                         'black_king': False, 'black_queen': False}
+        castle_rights = {'white_king_side': False, 'white_queen_side': False,
+                         'black_king_side': False, 'black_queen_side': False}
         for character in position_string:
             if character == 'K':
-                castle_rights['white_king'] = True
+                castle_rights['white_king_side'] = True
             if character == 'Q':
-                castle_rights['white_queen'] = True
+                castle_rights['white_queen_side'] = True
             if character == 'k':
-                castle_rights['black_king'] = True
+                castle_rights['black_king_side'] = True
             if character == 'q':
-                castle_rights['black_queen'] = True
+                castle_rights['black_queen_side'] = True
         return castle_rights
 
     def set_position(self, position):
-        self.game_state, self.pieces, self.player, self.castle_rights, self.en_passant = self.import_position(position)
+        try:
+            self.game_state, self.pieces, self.player, self.castle_rights, self.en_passant \
+                = self.import_position(position)
+        except ValueError as E:
+            print(f'Error: {E}')
 
 
 if __name__ == '__main__':
     game = Game()
     # print(game.game_state)
-    pos = game.import_position('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
-    for element in pos:
-        print(element)
+    game.set_position('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+    print(game.game_state)
     # print(WHITE_PIECES)

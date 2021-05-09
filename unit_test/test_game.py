@@ -22,11 +22,11 @@ class TestImportPosition(unittest.TestCase):
     def test_import_caste_rights(self):
         self.assertDictEqual(
             self.game.import_castle_rights('Kq'),
-            {'white_king': True, 'white_queen': False, 'black_king': False, 'black_queen': True}
+            {'white_king_side': True, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': True}
         )
         self.assertDictEqual(
             self.game.import_castle_rights('-'),
-            {'white_king': False, 'white_queen': False, 'black_king': False, 'black_queen': False}
+            {'white_king_side': False, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': False}
         )
 
 
