@@ -110,6 +110,7 @@ class Game:
     def make_move(self, origin_pos, target_pos):
         self.state, self.pieces, self.castle_rights, self.en_passant \
             = self.move(self.state, self.pieces, self.castle_rights, origin_pos, target_pos)
+        self.player = self.swap_player(self.player)
 
     # this implementation allows taking of own pieces and does not check if move is legal
     def move(self, state, pieces, castle_rights, origin_pos, target_pos):
@@ -129,6 +130,9 @@ class Game:
         origin_piece = state[origin_pos[0]][origin_pos[1]]
         target_piece = state[target_pos[0]][target_pos[1]]
 
+        self.apply_en_passant(state, pieces, origin_pos, target_pos)
+        state, pieces, castle_rights, _ = self.apply_castling(state, pieces, castle_rights, origin_pos, target_pos)
+
         state[origin_pos[0]][origin_pos[1]] = 'empty'
         pieces[origin_piece].remove(origin_pos)
 
@@ -142,6 +146,43 @@ class Game:
         en_passant = self.update_en_passant(origin_piece, origin_pos, target_pos)
 
         return state, pieces, castle_rights, en_passant
+
+    def apply_castling(self, state, pieces, castle_rights, origin_pos, target_pos):
+        if not self.detect_castling(state, origin_pos, target_pos):
+            return state, pieces, castle_rights, None
+        rook_row = origin_pos[0]
+        rook_origin_column = 0 if target_pos[1] == 2 else 7
+        rook_target_column = 3 if target_pos[1] == 2 else 5
+        if self.state_entry(state, (rook_row, rook_origin_column)) == 'empty':
+            return state, pieces, castle_rights, None
+        return self.move(state, pieces, castle_rights, (rook_row, rook_origin_column), (rook_row, rook_target_column))
+
+    def detect_castling(self, state, origin_pos, target_pos):
+        piece = self.state_entry(state, origin_pos)
+        if piece not in ('white_king', 'black_king'):
+            return False
+        if abs(origin_pos[1] - target_pos[1]) == 2:
+            return True
+        return False
+
+    def apply_en_passant(self, state, pieces, origin_pos, target_pos):
+        if not self.detect_en_passant(state, origin_pos, target_pos):
+            return
+        square_to_remove = (origin_pos[0], target_pos[1])
+        piece_to_remove = self.state_entry(state, square_to_remove)
+        state[square_to_remove[0]][square_to_remove[1]] = 'empty'
+        pieces[piece_to_remove].remove(square_to_remove)
+        return
+
+    def detect_en_passant(self, state, origin_pos, target_pos):
+        piece = self.state_entry(state, origin_pos)
+        if piece not in ('white_pawn', 'black_pawn'):
+            return False
+        target_piece = self.state_entry(state, target_pos)
+        if target_piece == 'empty':
+            if abs(origin_pos[0] - target_pos[0]) == 1 and abs(origin_pos[1] - target_pos[1]) == 1:
+                return True
+        return False
 
     @staticmethod
     def update_en_passant(origin_piece, origin_pos, target_pos):
@@ -177,32 +218,41 @@ class Game:
 
     """Get legal moves"""
 
+    def get_legal_moves(self, player, state, pieces, en_passant, castle_rights):
+        moves = self.get_pseudolegal_moves(player, state, pieces, en_passant, castle_rights)
+        legal_moves = set()
+        for move_ in moves:
+            new_state, new_pieces, _, _ = self.move(state, pieces, castle_rights, move_[0], move_[1])
+            if not self.is_check(new_state, new_pieces, player):
+                legal_moves.add(move_)
+        return legal_moves
+
     def get_pseudolegal_moves(self, player, state, pieces, en_passant, castle_rights=None):
-        moves = []
+        moves = set()
         for piece_type in WHITE_PIECES if player == 'white' else BLACK_PIECES:
             for piece_pos in pieces[piece_type]:
-                if piece_type not in ('white_pawn', 'black_pawn'):
-                    moves += self.get_default_moves(piece_type, piece_pos, state)
+                if piece_type in ('white_pawn', 'black_pawn'):
+                    moves.update(self.get_pawn_moves(piece_type, piece_pos, state))
+                    moves.update(self.get_pawn_takes(piece_type, piece_pos, state, en_passant))
                 else:
-                    moves += self.get_pawn_moves(piece_type, piece_pos, state)
-                    moves += self.get_pawn_takes(piece_type, piece_pos, state, en_passant)
+                    moves.update(self.get_default_moves(piece_type, piece_pos, state))
 
                 if castle_rights:
                     if piece_type in ('white_king', 'black_king'):
-                        moves += self.get_castle_moves(piece_type, piece_pos, state, pieces, castle_rights)
+                        moves.update(self.get_castle_moves(piece_type, piece_pos, state, pieces, castle_rights))
         return moves
 
     def get_default_moves(self, piece, position, state):
         opponent_pieces = self.opponent_pieces(piece)
         position_array = np.array(list(position))
-        moves = []
+        moves = set()
         directions, is_single_step = self.directions(piece)
 
         for direction in directions:
             current_position = position_array + direction
             while self.on_board(current_position):
                 if self.state_entry(state, current_position) in opponent_pieces + ['empty']:
-                    moves.append((position, tuple(current_position)))
+                    moves.add((position, tuple(current_position)))
                     current_position += direction
                 else:
                     break
@@ -226,22 +276,22 @@ class Game:
         raise NameError('Piece not valid!')
 
     def get_pawn_moves(self, piece, position, state):
-        moves = []
+        moves = set()
         move_direction = np.array([-1, 0] if piece == 'white_pawn' else [1, 0])
 
         single_move_pos = np.array(list(position)) + move_direction
         if self.state_entry(state, single_move_pos) == 'empty':
-            moves.append((position, tuple(single_move_pos)))
+            moves.add((position, tuple(single_move_pos)))
             # check for double pawn move
             double_move_pos = single_move_pos + move_direction
             if (piece == 'white_pawn' and double_move_pos[0] == 4) \
                     or (piece == 'black_pawn' and double_move_pos[0] == 3):
                 if self.state_entry(state, double_move_pos) == 'empty':
-                    moves.append((position, tuple(double_move_pos)))
+                    moves.add((position, tuple(double_move_pos)))
         return moves
 
     def get_pawn_takes(self, piece, position, state, en_passant):
-        moves = []
+        moves = set()
         position_array = np.array(list(position))
         take_directions = np.array([[-1, 1], [-1, -1]] if piece == 'white_pawn' else [[1, 1], [1, -1]])
         for direction in take_directions:
@@ -249,25 +299,97 @@ class Game:
             if not self.on_board(target_pos):
                 continue
             if self.state_entry(state, target_pos) in self.opponent_pieces(piece):
-                moves.append((position, tuple(target_pos)))
+                moves.add((position, tuple(target_pos)))
             if en_passant:
                 correct_row = (piece == 'white_pawn' and target_pos[0] == 2 and en_passant[0] == 3) \
                               or (piece == 'black_pawn' and target_pos[0] == 5 and en_passant[0] == 4)
                 correct_column = (target_pos[1] == en_passant[1])
                 if correct_row and correct_column:
-                    moves.append((position, tuple(target_pos)))
+                    moves.add((position, tuple(target_pos)))
         return moves
 
-    def get_castle_moves(self, piece_type, piece_pos, state, pieces, castle_rights):
-        return []
+    def get_castle_moves(self, piece, position, state, pieces, castle_rights):
+        moves = set()
+        if piece == 'white_king':
+            if castle_rights['white_king_side']:
+                if self.check_king_side(position, state, pieces, 'white'):
+                    moves.add((position, (position[0], position[1] + 2)))
+            if castle_rights['white_queen_side']:
+                if self.check_queen_side(position, state, pieces, 'white'):
+                    moves.add((position, (position[0], position[1] + 2)))
+        if piece == 'black_king':
+            if castle_rights['black_king_side']:
+                if self.check_king_side(position, state, pieces, 'black'):
+                    moves.add((position, (position[0], position[1] + 2)))
+            if castle_rights['black_queen_side']:
+                if self.check_queen_side(position, state, pieces, 'black'):
+                    moves.add((position, (position[0], position[1] + 2)))
+        return moves
+
+    def check_king_side(self, position, state, pieces, player):
+        if self.is_attacked(state, pieces, position, player):
+            return False
+        row, column = position[0], position[1]
+        for square in ((row, column + 1), (row, column + 2)):
+            if not self.on_board(square):
+                raise ValueError('Castling outside board!')
+            if self.state_entry(state, square) != 'empty':
+                return False
+            if self.is_attacked(state, pieces, square, player):
+                return False
+        return True
+
+    def check_queen_side(self, position, state, pieces, player):
+        if self.is_attacked(state, pieces, position, player):
+            return False
+        row, column = position[0], position[1]
+        for square in ((row, column - 1), (row, column - 2)):
+            if not self.on_board(square):
+                raise ValueError('Castling outside board!')
+            if self.state_entry(state, square) != 'empty':
+                return False
+            if self.is_attacked(state, pieces, square, player):
+                return False
+        if not self.on_board((row, column - 3)):
+            raise ValueError('Castling outside board!')
+        if self.state_entry(state, (row, column - 3)) != 'empty':
+            return False
+        return True
+
+    def is_check(self, state, pieces, player):
+        if not pieces[f'{player}_king']:
+            return None
+        king_pos = next(iter(pieces[f'{player}_king']))
+        return self.is_attacked(state, pieces, king_pos, player)
+
+    def is_attacked(self, state, pieces, position, player):
+        opponent_moves = self.get_pseudolegal_moves(self.swap_player(player), state, pieces, None, None)
+        for op_move in opponent_moves:
+            if op_move[1] == position:
+                return True
+        return False
 
     @staticmethod
     def opponent_pieces(piece):
+        if piece == 'empty':
+            return None
         return BLACK_PIECES if piece in WHITE_PIECES else WHITE_PIECES
 
     @staticmethod
     def state_entry(state, position):
         return state[position[0]][position[1]]
+
+    @staticmethod
+    def get_player(piece):
+        if piece in WHITE_PIECES:
+            return 'white'
+        if piece in BLACK_PIECES:
+            return 'black'
+        raise NameError('Piece belongs to no player!')
+
+    @staticmethod
+    def swap_player(player):
+        return 'black' if player == 'white' else 'white'
 
 
 if __name__ == '__main__':
@@ -276,5 +398,5 @@ if __name__ == '__main__':
     # game.make_move((1, 3), (3, 3))
     # print(game.state, game.en_passant)
     # print(WHITE_PIECES)
-    for move in game.get_pseudolegal_moves(game.player, game.state, game.pieces, game.en_passant):
+    for move in game.get_legal_moves(game.player, game.state, game.pieces, game.en_passant, game.castle_rights):
         print(move)
