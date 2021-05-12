@@ -1,15 +1,15 @@
 import unittest
 from chess.game import Game
+from chess import constants as c
 
-WHITE_PIECES = ['white_pawn', 'white_knight', 'white_bishop', 'white_rook', 'white_queen', 'white_king']
-BLACK_PIECES = ['black_pawn', 'black_knight', 'black_bishop', 'black_rook', 'black_queen', 'black_king']
+
 
 
 class TestImportPosition(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in WHITE_PIECES + BLACK_PIECES}
+        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
 
     def test_get_piece(self):
         self.assertEqual(self.game.get_piece('n'), 'black_knight')
@@ -34,7 +34,7 @@ class TestUpdatePosition(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in WHITE_PIECES + BLACK_PIECES}
+        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
         self.castle_rights = {'white_king_side': True, 'white_queen_side': True,
                               'black_king_side': True, 'black_queen_side': True}
 
@@ -91,7 +91,7 @@ class TestGetLegalMoves(unittest.TestCase):
     def setUp(self):
         self.game = Game()
         self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in WHITE_PIECES + BLACK_PIECES}
+        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
         self.castle_rights = {'white_king_side': True, 'white_queen_side': True,
                               'black_king_side': True, 'black_queen_side': True}
 
