@@ -47,6 +47,8 @@ class GUI(tk.Frame):
         self.check_ai()
 
     def move_event(self, event):
+        if self.game.winner:
+            return
         if self.selected:
             target_pos = self.coords_to_grid(event.x, event.y)
             if self.selected == target_pos:
@@ -106,7 +108,12 @@ class GUI(tk.Frame):
         # self.check_ai()
 
     def update_header(self):
-        # if not self.game.finished:
+        if self.game.winner == 'draw':
+            self.header.config(text="Stalemate: It's a draw!")
+            return
+        if self.game.winner:
+            self.header.config(text=f"{'White' if self.game.winner == 'white' else 'Black'} won!")
+            return
         self.header.config(text=f"{'White' if self.game.player == 'white' else 'Black'}'s turn: "
                                 f"{'The AI is calculating.' if self.is_nnet(self.game.player) else 'Make a move!'}"
                            )

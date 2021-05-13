@@ -8,6 +8,7 @@ class Game:
     def __init__(self, position=c.DEFAULT_POSITION):
         self.state, self.pieces, self.player, self.castle_rights, self.en_passant \
             = self.import_position(position)
+        self.winner = None
 
     """Importing of a position"""
 
@@ -101,6 +102,16 @@ class Game:
         except ValueError as E:
             print(f'Error: {E}')
 
+    def game_winner(self):
+        return self.get_winner(self.state, self.pieces, self.castle_rights, self.en_passant, self.player)
+
+    def get_winner(self, state, pieces, castle_rights, en_passant, player):
+        if self.get_legal_moves(player, state, pieces, en_passant, castle_rights):
+            return None
+        if self.is_check(state, pieces, player):
+            return self.swap_player(player)
+        return 'draw'
+
     """Updating of position"""
 
     # executes a move and updates the class attributes
@@ -108,6 +119,7 @@ class Game:
         self.state, self.pieces, self.castle_rights, self.en_passant \
             = self.move(self.state, self.pieces, self.castle_rights, origin_pos, target_pos)
         self.player = self.swap_player(self.player)
+        self.winner = self.game_winner()
 
     # this implementation allows taking of own pieces and does not check if move is legal
     def move(self, state, pieces, castle_rights, origin_pos, target_pos):
@@ -139,10 +151,20 @@ class Game:
         if target_piece != 'empty':
             pieces[target_piece].remove(target_pos)
 
+        self.apply_promotion(state, pieces, target_pos)
+
         castle_rights = self.update_castle_rights(castle_rights, origin_piece, origin_pos, target_pos)
         en_passant = self.update_en_passant(origin_piece, origin_pos, target_pos)
 
         return state, pieces, castle_rights, en_passant
+
+    def apply_promotion(self, state, pieces, position):
+        piece = self.state_entry(state, position)
+        player = self.get_player(piece)
+        if (piece == 'white_pawn' and position[0] == 0) or (piece == 'black_pawn' and position[0] == c.ROWS - 1):
+            state[position[0]][position[1]] = f'{player}_queen'
+            pieces[f'{player}_queen'].add(position)
+            pieces[f'{player}_pawn'].remove(position)
 
     def apply_castling(self, state, pieces, castle_rights, origin_pos, target_pos):
         if not self.detect_castling(state, origin_pos, target_pos):
