@@ -1,31 +1,29 @@
 import unittest
-from chess.game import Game
+from chess.game import Game, State
 from chess import constants as c
-
-
 
 
 class TestImportPosition(unittest.TestCase):
     def setUp(self):
-        self.game = Game()
-        self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
+        self.state = State(c.DEFAULT_POSITION)
+        self.state.board = [['empty' for _ in range(8)] for _ in range(8)]
+        self.state.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
 
     def test_get_piece(self):
-        self.assertEqual(self.game.get_piece('n'), 'black_knight')
+        self.assertEqual(self.state.get_piece('n'), 'black_knight')
 
     def test_add_piece(self):
-        state, pieces = self.game.add_piece('black_queen', self.state, self.pieces, 1, 2)
+        state, pieces = self.state.add_piece('black_queen', self.state.board, self.state.pieces, 1, 2)
         self.assertEqual(state[1][2], 'black_queen')
         self.assertEqual(pieces['black_queen'], {(1, 2)})
 
     def test_import_caste_rights(self):
         self.assertDictEqual(
-            self.game.import_castle_rights('Kq'),
+            self.state.import_castle_rights('Kq'),
             {'white_king_side': True, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': True}
         )
         self.assertDictEqual(
-            self.game.import_castle_rights('-'),
+            self.state.import_castle_rights('-'),
             {'white_king_side': False, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': False}
         )
 
@@ -33,91 +31,97 @@ class TestImportPosition(unittest.TestCase):
 class TestUpdatePosition(unittest.TestCase):
     def setUp(self):
         self.game = Game()
-        self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
-        self.castle_rights = {'white_king_side': True, 'white_queen_side': True,
-                              'black_king_side': True, 'black_queen_side': True}
+        self.state = State(c.EMPTY_BOARD)
+        self.state.castle_rights = {'white_king_side': True, 'white_queen_side': True,
+                                    'black_king_side': True, 'black_queen_side': True}
 
-        self.state[1][3] = 'white_pawn'
-        self.state[7][6] = 'white_pawn'
-        self.state[2][3] = 'black_queen'
-        self.state[7][7] = 'white_rook'
-        self.state[1][2] = 'black_pawn'
+        self.state.board[1][3] = 'white_pawn'
+        self.state.board[7][6] = 'white_pawn'
+        self.state.board[2][3] = 'black_queen'
+        self.state.board[7][7] = 'white_rook'
+        self.state.board[1][2] = 'black_pawn'
+        self.state.board[7][4] = 'white_king'
 
-        self.pieces['white_pawn'].add((1, 3))
-        self.pieces['white_pawn'].add((7, 6))
-        self.pieces['black_queen'].add((2, 3))
-        self.pieces['white_rook'].add((7, 7))
-        self.pieces['black_pawn'].add((1, 2))
+        self.state.pieces['white_pawn'].add((1, 3))
+        self.state.pieces['white_pawn'].add((7, 6))
+        self.state.pieces['black_queen'].add((2, 3))
+        self.state.pieces['white_rook'].add((7, 7))
+        self.state.pieces['black_pawn'].add((1, 2))
+        self.state.pieces['white_king'].add((7, 4))
 
     def test_move1(self):
-        state, pieces, castle_rights, en_passant = \
-            self.game.move(self.state, self.pieces, self.castle_rights, (2, 3), (1, 3))
-        self.assertEqual(state[1][3], 'black_queen')
-        self.assertEqual(state[2][3], 'empty')
-        self.assertSetEqual(pieces['black_queen'], {(1, 3)})
-        self.assertSetEqual(pieces['white_pawn'], {(7, 6)})
-        self.assertEqual(en_passant, None)
-        self.assertDictEqual(castle_rights, self.castle_rights)
+        state = self.game.move(self.state, (2, 3), (1, 3))
+        self.assertEqual(state.board[1][3], 'black_queen')
+        self.assertEqual(state.board[2][3], 'empty')
+        self.assertSetEqual(state.pieces['black_queen'], {(1, 3)})
+        self.assertSetEqual(state.pieces['white_pawn'], {(7, 6)})
+        self.assertEqual(state.en_passant, None)
+        self.assertDictEqual(state.castle_rights, self.state.castle_rights)
 
     def test_move2(self):
-        state, pieces, castle_rights, en_passant = \
-            self.game.move(self.state, self.pieces, self.castle_rights, (1, 3), (3, 3))
-        self.assertEqual(state[3][3], 'white_pawn')
-        self.assertEqual(state[1][3], 'empty')
-        self.assertEqual(state[2][3], 'black_queen')
-        self.assertSetEqual(pieces['black_queen'], {(2, 3)})
-        self.assertSetEqual(pieces['white_pawn'], {(7, 6), (3, 3)})
-        self.assertEqual(en_passant, (3, 3))
-        self.assertDictEqual(castle_rights, self.castle_rights)
+        state = self.game.move(self.state, (1, 3), (3, 3))
+        self.assertEqual(state.board[3][3], 'white_pawn')
+        self.assertEqual(state.board[1][3], 'empty')
+        self.assertEqual(state.board[2][3], 'black_queen')
+        self.assertSetEqual(state.pieces['black_queen'], {(2, 3)})
+        self.assertSetEqual(state.pieces['white_pawn'], {(7, 6), (3, 3)})
+        self.assertEqual(state.en_passant, (3, 3))
+        self.assertDictEqual(state.castle_rights, self.state.castle_rights)
 
     def test_move3(self):
-        state, pieces, castle_rights, en_passant = \
-            self.game.move(self.state, self.pieces, self.castle_rights, (7, 7), (7, 6))
-        self.assertEqual(castle_rights,
+        state = self.game.move(self.state, (7, 7), (7, 6))
+        self.assertEqual(state.castle_rights,
                          {'white_king_side': False, 'white_queen_side': True,
                           'black_king_side': True, 'black_queen_side': True}
                          )
 
-    def test_move4(self):
-        state, pieces, castle_rights, en_passant = \
-            self.game.move(self.state, self.pieces, self.castle_rights, (1, 3), (2, 2))
-        self.assertEqual(state[2][2], 'white_pawn')
-        self.assertEqual(state[1][2], 'empty')
-        self.assertSetEqual(pieces['black_pawn'], set())
+    def test_move_en_passant(self):
+        state = self.game.move(self.state, (1, 3), (2, 2))
+        self.assertEqual(state.board[2][2], 'white_pawn')
+        self.assertEqual(state.board[1][2], 'empty')
+        self.assertSetEqual(state.pieces['black_pawn'], set())
+
+    def test_move_castling(self):
+        state = self.game.move(self.state, (7, 4), (7, 6))
+        self.assertEqual(state.board[7][5], 'white_rook')
+        self.assertEqual(state.board[7][7], 'empty')
+        self.assertSetEqual(state.pieces['white_rook'], {(7, 5)})
+        self.assertEqual(state.player, 'black')
+
+    def test_move_promotion(self):
+        state = self.game.move(self.state, (1, 3), (0, 3))
+        self.assertEqual(state.board[0][3], 'white_queen')
+        self.assertSetEqual(state.pieces['white_queen'], {(0, 3)})
+        self.assertSetEqual(state.pieces['white_pawn'], {(7, 6)})
 
 
 class TestGetLegalMoves(unittest.TestCase):
     def setUp(self):
         self.game = Game()
-        self.state = [['empty' for _ in range(8)] for _ in range(8)]
-        self.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
-        self.castle_rights = {'white_king_side': True, 'white_queen_side': True,
-                              'black_king_side': True, 'black_queen_side': True}
+        self.state = State(c.EMPTY_BOARD)
 
-        self.state[1][2] = 'white_knight'
-        self.state[5][7] = 'black_knight'
-        self.state[3][3] = 'white_pawn'
-        self.state[3][4] = 'black_king'
+        self.state.board[1][2] = 'white_knight'
+        self.state.board[5][7] = 'black_knight'
+        self.state.board[3][3] = 'white_pawn'
+        self.state.board[3][4] = 'black_king'
 
-        self.pieces['white_knight'].add((1, 2))
-        self.pieces['black_knight'].add((5, 7))
-        self.pieces['white_pawn'].add((3, 3))
-        self.pieces['black_king'].add((3, 4))
+        self.state.pieces['white_knight'].add((1, 2))
+        self.state.pieces['black_knight'].add((5, 7))
+        self.state.pieces['white_pawn'].add((3, 3))
+        self.state.pieces['black_king'].add((3, 4))
 
     def test_knight(self):
         self.assertSetEqual(self.game.get_default_moves('white_knight', (1, 2), self.state),
                             {((1, 2), (0, 0)), ((1, 2), (0, 4)), ((1, 2), (2, 0)), ((1, 2), (2, 4)), ((1, 2), (3, 1))})
 
     def test_is_attacked(self):
-        self.assertTrue(self.game.is_attacked(self.state, self.pieces, (3, 3), 'white'))
-        self.assertFalse(self.game.is_attacked(self.state, self.pieces, (3, 4), 'black'))
+        self.assertTrue(self.game.is_attacked(self.state, (3, 3)))
+        self.assertFalse(self.game.is_attacked(self.state, (3, 4)))
 
     def test_pseudo_move(self):
-        self.assertIn(((3, 4), (2, 4)),
-                      self.game.get_pseudolegal_moves('black', self.state, self.pieces, None, self.castle_rights))
-        self.assertNotIn(((3, 4), (2, 4)),
-                         self.game.get_legal_moves('black', self.state, self.pieces, None, self.castle_rights))
+        self.state.player = 'black'
+        self.assertIn(((3, 4), (2, 4)), self.game.get_pseudolegal_moves(self.state))
+        self.assertNotIn(((3, 4), (2, 4)), self.game.get_legal_moves(self.state))
 
 
 if __name__ == '__main__':

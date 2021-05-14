@@ -9,9 +9,9 @@ from chess import constants as c
 
 
 class GUI(tk.Frame):
-    def __init__(self):
+    def __init__(self, position=c.DEFAULT_POSITION):
         super().__init__()
-        self.game = Game()
+        self.game = Game(position)
         self.images = self.import_images()
 
         self.selected = None
@@ -47,7 +47,7 @@ class GUI(tk.Frame):
         self.check_ai()
 
     def move_event(self, event):
-        if self.game.winner:
+        if self.game.state.winner:
             return
         if self.selected:
             target_pos = self.coords_to_grid(event.x, event.y)
@@ -71,9 +71,9 @@ class GUI(tk.Frame):
         self.selected = None
 
         select_pos = self.coords_to_grid(event.x, event.y)
-        piece = self.game.state_entry(self.game.state, select_pos)
-        if not (self.game.player == 'white' and piece in c.WHITE_PIECES) and not (
-                self.game.player == 'black' and piece in c.BLACK_PIECES):
+        piece = self.game.state.entry(select_pos)
+        if not (self.game.state.player == 'white' and piece in c.WHITE_PIECES) and not (
+                self.game.state.player == 'black' and piece in c.BLACK_PIECES):
             self.board.delete('highlight')
             self.redraw()
             return
@@ -108,15 +108,16 @@ class GUI(tk.Frame):
         # self.check_ai()
 
     def update_header(self):
-        if self.game.winner == 'draw':
+        if self.game.state.winner == 'draw':
             self.header.config(text="Stalemate: It's a draw!")
             return
-        if self.game.winner:
-            self.header.config(text=f"{'White' if self.game.winner == 'white' else 'Black'} won!")
+        if self.game.state.winner:
+            self.header.config(text=f"{'White' if self.game.state.winner == 'white' else 'Black'} won!")
             return
-        self.header.config(text=f"{'White' if self.game.player == 'white' else 'Black'}'s turn: "
-                                f"{'The AI is calculating.' if self.is_nnet(self.game.player) else 'Make a move!'}"
-                           )
+        self.header.config(
+            text=f"{'White' if self.game.state.player == 'white' else 'Black'}'s turn: "
+                 f"{'The AI is calculating.' if self.is_nnet(self.game.state.player) else 'Make a move!'}"
+        )
 
     # else:
     #     self.header.config(text=f"{'Red' if self.game.winner == 1 else 'Blue'} has won!")
@@ -126,7 +127,8 @@ class GUI(tk.Frame):
         self.board.delete('piece')
         color = c.COLOR2
         for row in range(c.ROWS):
-            color = c.COLOR1 if color == c.COLOR2 else c.COLOR2
+            if c.ROWS % 2 ==0:
+                color = c.COLOR1 if color == c.COLOR2 else c.COLOR2
             for column in range(c.COLUMNS):
                 x1 = (column * c.SQUARE_SIZE)
                 y1 = ((c.ROWS - row - 1) * c.SQUARE_SIZE)
@@ -135,7 +137,7 @@ class GUI(tk.Frame):
                 self.board.create_rectangle(x1, y1, x2, y2, outline="black", tags="square", fill=color)
                 color = c.COLOR1 if color == c.COLOR2 else c.COLOR2
 
-                piece = self.game.state_entry(self.game.state, (row, column))
+                piece = self.game.state.entry((row, column))
                 if piece != 'empty':
                     image_x, image_y = self.get_position(row, column)
                     self.board.create_image(image_x, image_y, image=self.images[piece], tags='piece', anchor='c')
