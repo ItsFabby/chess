@@ -9,21 +9,21 @@ class TestImportPosition(unittest.TestCase):
         self.state.board = [['empty' for _ in range(8)] for _ in range(8)]
         self.state.pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
 
-    def test_get_piece(self):
-        self.assertEqual(self.state.get_piece('n'), 'black_knight')
+    def test__get_piece(self):
+        self.assertEqual(self.state._get_piece('n'), 'black_knight')
 
-    def test_add_piece(self):
-        state, pieces = self.state.add_piece('black_queen', self.state.board, self.state.pieces, 1, 2)
+    def test__add_piece(self):
+        state, pieces = self.state._add_piece('black_queen', self.state.board, self.state.pieces, 1, 2)
         self.assertEqual(state[1][2], 'black_queen')
         self.assertEqual(pieces['black_queen'], {(1, 2)})
 
     def test_import_caste_rights(self):
         self.assertDictEqual(
-            self.state.import_castle_rights('Kq'),
+            self.state._import_castle_rights('Kq'),
             {'white_king_side': True, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': True}
         )
         self.assertDictEqual(
-            self.state.import_castle_rights('-'),
+            self.state._import_castle_rights('-'),
             {'white_king_side': False, 'white_queen_side': False, 'black_king_side': False, 'black_queen_side': False}
         )
 
@@ -111,16 +111,16 @@ class TestGetLegalMoves(unittest.TestCase):
         self.state.pieces['black_king'].add((3, 4))
 
     def test_knight(self):
-        self.assertSetEqual(self.game.get_default_moves('white_knight', (1, 2), self.state),
+        self.assertSetEqual(self.game._get_default_moves('white_knight', (1, 2), self.state),
                             {((1, 2), (0, 0)), ((1, 2), (0, 4)), ((1, 2), (2, 0)), ((1, 2), (2, 4)), ((1, 2), (3, 1))})
 
-    def test_is_attacked(self):
-        self.assertTrue(self.game.is_attacked(self.state, (3, 3)))
-        self.assertFalse(self.game.is_attacked(self.state, (3, 4)))
+    def test__is_attacked(self):
+        self.assertTrue(self.game._is_attacked(self.state, (3, 3)))
+        self.assertFalse(self.game._is_attacked(self.state, (3, 4)))
 
     def test_pseudo_move(self):
         self.state.player = 'black'
-        self.assertIn(((3, 4), (2, 4)), self.game.get_pseudolegal_moves(self.state))
+        self.assertIn(((3, 4), (2, 4)), self.game._get_pseudolegal_moves(self.state))
         self.assertNotIn(((3, 4), (2, 4)), self.game.get_legal_moves(self.state))
 
 

@@ -1,35 +1,85 @@
 import numpy as np
 import copy
+from typing import Optional
 
 from chess import constants as c
 
 
 class Game:
+    """
+    Attributes:
+        state (Object: State): Current state of the game. Contains piece positions, castle rights, en passant, which
+            player is next and whether the game has a winner
+
+    Methods on the state of the current instance:
+        game_winner() -> Str,
+        make_move(origin_pos, target_pos) -> None,
+        game_legal_moves() -> Set((origin_pos, target_pos))
+
+    Class methods:
+        get_winner(state) -> Str,
+        move(state, origin_pos, target_pos) -> State,
+        get_legal_moves(state) -> Set((origin_pos, target_pos)),
+        is_check(state) -> Bool
+    """
+
     def __init__(self, position=c.DEFAULT_POSITION):
         self.state = State(position)
 
     def game_winner(self):
+        """
+        Returns the winner of the current instance of the game.
+
+        :return: 'white', 'black', 'draw' or None
+        """
         return self.get_winner(self.state)
 
-    def get_winner(self, state):
-        if self.get_legal_moves(state):
+    @classmethod
+    def get_winner(cls, state: 'State') -> Optional[str]:
+        if cls.get_legal_moves(state):
             return None
-        if self.is_check(state):
-            return self.swap_player(state.player)
+        if cls.is_check(state):
+            return cls._swap_player(state.player)
         return 'draw'
+
+    @classmethod
+    def is_check(cls, state: 'State') -> bool:
+        if not state.pieces[f'{state.player}_king']:
+            return False
+        king_pos = next(iter(state.pieces[f'{state.player}_king']))
+        return cls._is_attacked(state, king_pos)
 
     """Updating of position"""
 
-    # executes a move and updates the class attributes
-    def make_move(self, origin_pos, target_pos):
+    def make_move(self, origin_pos: tuple, target_pos: tuple) -> None:
+        """
+        Makes a move on the current instance of the game. It automatically applies en passant, castling
+        and pawn to queen promotions. Castling is specified by moving the king to squares. This method does not check
+        whether a move is legal!
+
+        :param origin_pos: (row, column)
+        :param target_pos: (row, column)
+        """
         self.state = self.move(self.state, origin_pos, target_pos)
         self.state.winner = self.get_winner(self.state)
 
     # this implementation allows taking of own state.pieces and does not check if move is legal
-    def move(self, state, origin_pos, target_pos):
-        if not self.on_board(origin_pos):
+    @classmethod
+    def move(cls, state: 'State', origin_pos: tuple, target_pos: tuple) -> 'State':
+        """
+        Makes a move on an input state and outputs the resulting state. It automatically applies en passant, castling
+        and pawn to queen promotions. Castling is specified by moving the king to squares. This method does not check
+        whether a move is legal!
+
+        :param state: State object
+        :param origin_pos: (row, column)
+        :param target_pos: (row, column)
+        :return: State object
+        """
+
+        if not cls._on_board(origin_pos):
             raise ValueError('Origin position not on board!')
-        if not self.on_board(target_pos):
+        if not cls._on_board(target_pos):
             raise ValueError('Target position not on board!')
         if origin_pos == target_pos:
             raise ValueError('Origin and target position cannot be equal!')
@@ -38,33 +88,34 @@ class Game:
 
         state = copy.deepcopy(state)
 
-        state = self.apply_en_passant(state, origin_pos, target_pos)
-        state = self.apply_castling(state, origin_pos, target_pos)
-        state = self.apply_normal_move(state, origin_pos, target_pos)
-        state = self.apply_promotion(state, target_pos)
+        state = cls._apply_en_passant(state, origin_pos, target_pos)
+        state = cls._apply_castling(state, origin_pos, target_pos)
+        state = cls._apply_normal_move(state, origin_pos, target_pos)
+        state = cls._apply_promotion(state, target_pos)
 
         state.swap_player()
 
         return state
 
-    def apply_normal_move(self, state, origin_pos, target_pos):
+    @classmethod
+    def _apply_normal_move(cls, state: 'State', origin_pos: tuple, target_pos: tuple) -> 'State':
         origin_piece = state.entry(origin_pos)
-        target_piece = state.entry(target_pos)
+        tar_get_piece = state.entry(target_pos)
         state.board[origin_pos[0]][origin_pos[1]] = 'empty'
         state.pieces[origin_piece].remove(origin_pos)
 
         state.board[target_pos[0]][target_pos[1]] = origin_piece
         state.pieces[origin_piece].add(target_pos)
 
-        if target_piece != 'empty':
-            state.pieces[target_piece].remove(target_pos)
+        if tar_get_piece != 'empty':
+            state.pieces[tar_get_piece].remove(target_pos)
 
-        state.castle_rights = self.update_castle_rights(state.castle_rights, origin_piece, origin_pos, target_pos)
-        state.en_passant = self.update_en_passant(origin_piece, origin_pos, target_pos)
+        state.castle_rights = cls._update_castle_rights(state.castle_rights, origin_piece, origin_pos, target_pos)
+        state.en_passant = cls._update_en_passant(origin_piece, origin_pos, target_pos)
         return state
 
     @staticmethod
-    def apply_promotion(state, position):
+    def _apply_promotion(state: 'State', position: tuple) -> 'State':
         piece = state.entry(position)
         if (piece == 'white_pawn' and position[0] == 0) or (piece == 'black_pawn' and position[0] == c.ROWS - 1):
             state.board[position[0]][position[1]] = f'{state.player}_queen'
@@ -72,20 +123,21 @@ class Game:
             state.pieces[f'{state.player}_pawn'].remove(position)
         return state
 
-    def apply_castling(self, state, origin_pos, target_pos):
-        if not self.detect_castling(state, origin_pos, target_pos):
+    @classmethod
+    def _apply_castling(cls, state: 'State', origin_pos: tuple, target_pos: tuple) -> 'State':
+        if not cls._detect_castling(state, origin_pos, target_pos):
             return state
         rook_row = origin_pos[0]
         rook_origin_column = 0 if target_pos[1] == 2 else c.COLUMNS - 1
         rook_target_column = 3 if target_pos[1] == 2 else c.COLUMNS - 3
         if state.entry((rook_row, rook_origin_column)) == 'empty':
             return state
-        state = self.move(state, (rook_row, rook_origin_column), (rook_row, rook_target_column))
+        state = cls.move(state, (rook_row, rook_origin_column), (rook_row, rook_target_column))
         state.swap_player()
         return state
 
     @staticmethod
-    def detect_castling(state, origin_pos, target_pos):
+    def _detect_castling(state: 'State', origin_pos: tuple, target_pos: tuple) -> bool:
         piece = state.entry(origin_pos)
         if piece not in ('white_king', 'black_king'):
             return False
@@ -93,8 +145,9 @@ class Game:
             return True
         return False
 
-    def apply_en_passant(self, state, origin_pos, target_pos):
-        if not self.detect_en_passant(state, origin_pos, target_pos):
+    @classmethod
+    def _apply_en_passant(cls, state: 'State', origin_pos: tuple, target_pos: tuple) -> 'State':
+        if not cls._detect_en_passant(state, origin_pos, target_pos):
             return state
         square_to_remove = (origin_pos[0], target_pos[1])
         piece_to_remove = state.entry(square_to_remove)
@@ -103,18 +156,18 @@ class Game:
         return state
 
     @staticmethod
-    def detect_en_passant(state, origin_pos, target_pos):
+    def _detect_en_passant(state: 'State', origin_pos: tuple, target_pos: tuple) -> bool:
         piece = state.entry(origin_pos)
         if piece not in ('white_pawn', 'black_pawn'):
             return False
-        target_piece = state.entry(target_pos)
-        if target_piece == 'empty':
+        tar_get_piece = state.entry(target_pos)
+        if tar_get_piece == 'empty':
             if abs(origin_pos[0] - target_pos[0]) == 1 and abs(origin_pos[1] - target_pos[1]) == 1:
                 return True
         return False
 
     @staticmethod
-    def update_en_passant(origin_piece, origin_pos, target_pos):
+    def _update_en_passant(origin_piece: str, origin_pos: tuple, target_pos: tuple) -> Optional[tuple]:
         en_passant = None
         if origin_piece in ('white_pawn', 'black_pawn'):
             if origin_pos[0] - target_pos[0] in (-2, 2):
@@ -122,7 +175,7 @@ class Game:
         return en_passant
 
     @staticmethod
-    def update_castle_rights(castle_rights, origin_piece, origin_pos, target_pos):
+    def _update_castle_rights(castle_rights: dict, origin_piece: str, origin_pos: tuple, target_pos: tuple) -> dict:
         if origin_piece == 'white_king':
             castle_rights['white_king_side'] = False
             castle_rights['white_queen_side'] = False
@@ -142,49 +195,52 @@ class Game:
         return castle_rights
 
     @staticmethod
-    def on_board(position):
+    def _on_board(position: tuple) -> bool:
         return 0 <= position[0] < c.ROWS and 0 <= position[1] < c.COLUMNS
 
     """Get legal moves"""
 
-    def game_legal_moves(self):
+    def game_legal_moves(self) -> set:
         return self.get_legal_moves(self.state)
 
-    def get_legal_moves(self, state):
-        moves = self.get_pseudolegal_moves(state)
+    @classmethod
+    def get_legal_moves(cls, state: 'State') -> set:
+        moves = cls._get_pseudolegal_moves(state)
         legal_moves = set()
         for move_ in moves:
-            new_state = self.move(state, move_[0], move_[1])
+            new_state = cls.move(state, move_[0], move_[1])
             new_state.swap_player()
-            if not self.is_check(new_state):
+            if not cls.is_check(new_state):
                 legal_moves.add(move_)
         return legal_moves
 
-    def get_pseudolegal_moves(self, state):
+    @classmethod
+    def _get_pseudolegal_moves(cls, state: 'State') -> set:
         moves = set()
         for piece_type in c.WHITE_PIECES if state.player == 'white' else c.BLACK_PIECES:
             for piece_pos in state.pieces[piece_type]:
                 if piece_type in ('white_pawn', 'black_pawn'):
-                    moves.update(self.get_pawn_moves(piece_type, piece_pos, state))
-                    moves.update(self.get_pawn_takes(piece_type, piece_pos, state))
+                    moves.update(cls._get_pawn_moves(piece_type, piece_pos, state))
+                    moves.update(cls._get_pawn_takes(piece_type, piece_pos, state))
                 else:
-                    moves.update(self.get_default_moves(piece_type, piece_pos, state))
+                    moves.update(cls._get_default_moves(piece_type, piece_pos, state))
 
                 if state.castle_rights:
                     if piece_type in ('white_king', 'black_king'):
-                        moves.update(self.get_castle_moves(piece_type, piece_pos, state))
+                        moves.update(cls._get_castle_moves(piece_type, piece_pos, state))
         return moves
 
-    def get_default_moves(self, piece, position, state):
-        opponent_pieces = self.opponent_pieces(piece)
+    @classmethod
+    def _get_default_moves(cls, piece: str, position: tuple, state: 'State') -> set:
+        _opponent_pieces = cls._opponent_pieces(piece)
         position_array = np.array(list(position))
         moves = set()
-        directions, is_single_step = self.directions(piece)
+        _directions, is_single_step = cls._directions(piece)
 
-        for direction in directions:
+        for direction in _directions:
             current_position = position_array + direction
-            while self.on_board(current_position):
-                if state.entry(current_position) in opponent_pieces + ['empty']:
+            while cls._on_board(current_position):
+                if state.entry(current_position) in _opponent_pieces + ['empty']:
                     moves.add((position, tuple(current_position)))
                     if state.entry(current_position) != 'empty':
                         break
@@ -196,7 +252,7 @@ class Game:
         return moves
 
     @staticmethod
-    def directions(piece):
+    def _directions(piece: str) -> np.array:
         # 2nd output is True if piece does only a single step
         if piece in ('white_queen', 'black_queen'):
             return np.array([[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [0, 1], [-1, 0], [0, -1]]), False
@@ -210,18 +266,19 @@ class Game:
             return np.array([[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [0, 1], [-1, 0], [0, -1]]), True
         raise NameError('Piece not valid!')
 
-    def get_pawn_moves(self, piece, position, state):
+    @classmethod
+    def _get_pawn_moves(cls, piece: str, position: tuple, state: 'State') -> set:
         moves = set()
         move_direction = np.array([-1, 0] if piece == 'white_pawn' else [1, 0])
 
         single_move_pos = np.array(list(position)) + move_direction
-        if not self.on_board(single_move_pos):
+        if not cls._on_board(single_move_pos):
             return moves
         if state.entry(single_move_pos) == 'empty':
             moves.add((position, tuple(single_move_pos)))
             # check for double pawn move
             double_move_pos = single_move_pos + move_direction
-            if not self.on_board(double_move_pos):
+            if not cls._on_board(double_move_pos):
                 return moves
             if (piece == 'white_pawn' and double_move_pos[0] == c.ROWS - 4) \
                     or (piece == 'black_pawn' and double_move_pos[0] == 3):
@@ -229,15 +286,16 @@ class Game:
                     moves.add((position, tuple(double_move_pos)))
         return moves
 
-    def get_pawn_takes(self, piece, position, state):
+    @classmethod
+    def _get_pawn_takes(cls, piece: str, position: tuple, state: 'State') -> set:
         moves = set()
         position_array = np.array(list(position))
-        take_directions = np.array([[-1, 1], [-1, -1]] if piece == 'white_pawn' else [[1, 1], [1, -1]])
-        for direction in take_directions:
+        take__directions = np.array([[-1, 1], [-1, -1]] if piece == 'white_pawn' else [[1, 1], [1, -1]])
+        for direction in take__directions:
             target_pos = direction + position_array
-            if not self.on_board(target_pos):
+            if not cls._on_board(target_pos):
                 continue
-            if self.state.entry(target_pos) in self.opponent_pieces(piece):
+            if state.entry(target_pos) in cls._opponent_pieces(piece):
                 moves.add((position, tuple(target_pos)))
             if state.en_passant:
                 correct_row = (piece == 'white_pawn' and target_pos[0] == 2 and state.en_passant[0] == 3) \
@@ -247,78 +305,76 @@ class Game:
                     moves.add((position, tuple(target_pos)))
         return moves
 
-    def get_castle_moves(self, piece, position, state):
+    @classmethod
+    def _get_castle_moves(cls, piece: str, position: tuple, state: 'State') -> set:
         moves = set()
         if piece == 'white_king':
             if state.castle_rights['white_king_side']:
-                if self.check_king_side(position, state):
+                if cls._check_king_side(position, state):
                     moves.add((position, (position[0], position[1] + 2)))
             if state.castle_rights['white_queen_side']:
-                if self.check_queen_side(position, state):
+                if cls._check_queen_side(position, state):
                     moves.add((position, (position[0], position[1] - 2)))
         if piece == 'black_king':
             if state.castle_rights['black_king_side']:
-                if self.check_king_side(position, state):
+                if cls._check_king_side(position, state):
                     moves.add((position, (position[0], position[1] + 2)))
             if state.castle_rights['black_queen_side']:
-                if self.check_queen_side(position, state):
+                if cls._check_queen_side(position, state):
                     moves.add((position, (position[0], position[1] - 2)))
         return moves
 
-    def check_king_side(self, position, state):
-        if self.is_attacked(state, position):
+    @classmethod
+    def _check_king_side(cls, position: tuple, state: 'State') -> bool:
+        if cls._is_attacked(state, position):
             return False
         row, column = position[0], position[1]
         for square in ((row, column + 1), (row, column + 2)):
-            if not self.on_board(square):
+            if not cls._on_board(square):
                 raise ValueError('Castling outside board!')
-            if self.state.entry(square) != 'empty':
+            if state.entry(square) != 'empty':
                 return False
-            if self.is_attacked(state, square):
+            if cls._is_attacked(state, square):
                 return False
         return True
 
-    def check_queen_side(self, position, state):
-        if self.is_attacked(state, state):
+    @classmethod
+    def _check_queen_side(cls, position: tuple, state: 'State') -> bool:
+        if cls._is_attacked(state, position):
             return False
         row, column = position[0], position[1]
         for square in ((row, column - 1), (row, column - 2)):
-            if not self.on_board(square):
+            if not cls._on_board(square):
                 raise ValueError('Castling outside board!')
-            if self.state.entry(square) != 'empty':
+            if state.entry(square) != 'empty':
                 return False
-            if self.is_attacked(state, square):
+            if cls._is_attacked(state, square):
                 return False
-        if not self.on_board((row, column - 3)):
+        if not cls._on_board((row, column - 3)):
             raise ValueError('Castling outside board!')
-        if self.state.entry((row, column - 3)) != 'empty':
+        if state.entry((row, column - 3)) != 'empty':
             return False
         return True
 
-    def is_check(self, state):
-        if not state.pieces[f'{state.player}_king']:
-            return None
-        king_pos = next(iter(state.pieces[f'{state.player}_king']))
-        return self.is_attacked(state, king_pos)
-
-    def is_attacked(self, state, position):
+    @classmethod
+    def _is_attacked(cls, state: 'State', position: tuple) -> bool:
         state = copy.deepcopy(state)
         state.castle_rights = None
         state.swap_player()
-        opponent_moves = self.get_pseudolegal_moves(state)
+        opponent_moves = cls._get_pseudolegal_moves(state)
         for op_move in opponent_moves:
             if op_move[1] == position:
                 return True
         return False
 
     @staticmethod
-    def opponent_pieces(piece):
+    def _opponent_pieces(piece: str) -> Optional[list]:
         if piece == 'empty':
             return None
         return c.BLACK_PIECES if piece in c.WHITE_PIECES else c.WHITE_PIECES
 
     @staticmethod
-    def get_player(piece):
+    def _get_player(piece: str) -> str:
         if piece in c.WHITE_PIECES:
             return 'white'
         if piece in c.BLACK_PIECES:
@@ -326,32 +382,41 @@ class Game:
         raise NameError('Piece belongs to no player!')
 
     @staticmethod
-    def swap_player(player):
+    def _swap_player(player: str) -> str:
         return 'black' if player == 'white' else 'white'
 
 
 class State:
-    def __init__(self, fen_string):
+    def __init__(self, fen_string: str):
         self.board, self.pieces, self.player, self.castle_rights, self.en_passant \
-            = self.import_position(fen_string)
+            = self._import_position(fen_string)
         self.winner = None
 
-    def import_position(self, position_string):
-        position_string = position_string.split(' ')
+    @classmethod
+    def _import_position(cls, fen_position: str) -> tuple:
+        fen_position = fen_position.split(' ')
 
-        board, pieces = self.import_board_position(position_string[0])
-        player = 'white' if position_string[1] == 'w' else 'black'
-        castle_rights = self.import_castle_rights(position_string[2])
+        board, pieces = cls._import_board_position(fen_position[0])
+        player = 'white' if fen_position[1] == 'w' else 'black'
+        castle_rights = cls._import_castle_rights(fen_position[2])
         # broken
-        en_passant = None  # if position_string[3] == '-' else position_string[3]
+        en_passant = None  # if fen_position[3] == '-' else fen_position[3]
 
         return board, pieces, player, castle_rights, en_passant
 
-    def import_board_position(self, position_string):
+    def set_position(self, fen_position: str) -> None:
+        try:
+            self.board, self.pieces, self.player, self.castle_rights, self.en_passant \
+                = self._import_position(fen_position)
+        except ValueError as E:
+            print(f'Error: {E}')
+
+    @classmethod
+    def _import_board_position(cls, fen_position: str) -> tuple:
         board = [['empty' for _ in range(c.ROWS)] for _ in range(c.COLUMNS)]
         pieces = {piece: set() for piece in c.WHITE_PIECES + c.BLACK_PIECES}
         column, row = 0, 0
-        for character in position_string:
+        for character in fen_position:
             if character == '/':
                 if column < c.COLUMNS:
                     raise ValueError('Position not valid: Board string too short!')
@@ -368,8 +433,8 @@ class State:
                 column += int(character)
                 continue
 
-            piece = self.get_piece(character)
-            board, pieces = self.add_piece(piece, board, pieces, row, column)
+            piece = cls._get_piece(character)
+            board, pieces = cls._add_piece(piece, board, pieces, row, column)
             column += 1
 
         if column < c.COLUMNS - 1 or row < c.ROWS - 1:
@@ -377,7 +442,7 @@ class State:
         return board, pieces
 
     @staticmethod
-    def get_piece(character):
+    def _get_piece(character: chr) -> str:
         switcher = {
             'p': 'black_pawn',
             'P': 'white_pawn',
@@ -395,20 +460,20 @@ class State:
         return switcher.get(character)
 
     @staticmethod
-    def add_piece(piece, board, piece_list, row, column):
+    def _add_piece(piece: str, board: list, pieces: dict, row: int, column: int) -> tuple:
         if board[row][column] != 'empty':
             raise ValueError('Target square not empty!')
         if piece not in c.WHITE_PIECES + c.BLACK_PIECES:
             raise NameError('Input piece not valid!')
         board[row][column] = piece
-        piece_list[piece].add((row, column))
-        return board, piece_list
+        pieces[piece].add((row, column))
+        return board, pieces
 
     @staticmethod
-    def import_castle_rights(position_string):
+    def _import_castle_rights(fen_position: str) -> dict:
         castle_rights = {'white_king_side': False, 'white_queen_side': False,
                          'black_king_side': False, 'black_queen_side': False}
-        for character in position_string:
+        for character in fen_position:
             if character == 'K':
                 castle_rights['white_king_side'] = True
             if character == 'Q':
@@ -419,17 +484,10 @@ class State:
                 castle_rights['black_queen_side'] = True
         return castle_rights
 
-    def set_position(self, position):
-        try:
-            self.board, self.pieces, self.player, self.castle_rights, self.en_passant \
-                = self.import_position(position)
-        except ValueError as E:
-            print(f'Error: {E}')
-
-    def entry(self, position):
+    def entry(self, position: tuple) -> str:
         return self.board[position[0]][position[1]]
 
-    def swap_player(self):
+    def swap_player(self) -> None:
         self.player = 'black' if self.player == 'white' else 'white'
 
 

@@ -12,3 +12,21 @@ ROWS = 8
 SQUARE_SIZE = 64
 COLOR1 = '#b58863'
 COLOR2 = '#f0d9b5'
+
+"""Neural Network"""
+DEFAULT_STRUCTURE = 'structure0'
+
+"""Training"""
+DEFAULT_LEARNING_RATE = 0.0001
+DEFAULT_BATCH_SIZE = 256
+DEFAULT_EPOCHS = 1
+DEFAULT_THRESHOLD = 0
+DEFAULT_TRAINING_NOISE = 0.5
+
+"""Database"""
+DEFAULT_TABLE = 'training_data0'
+
+HOST_NAME = 'localhost'
+USER_NAME = 'root'
+PASSWORD = 'password'
+DATABASE = 'chess'
