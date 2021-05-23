@@ -1,3 +1,4 @@
+import copy
 import unittest
 from chess.game import Game, State
 from chess import constants as c
@@ -111,7 +112,7 @@ class TestGetLegalMoves(unittest.TestCase):
         self.state.pieces['black_king'].add((3, 4))
 
     def test_knight(self):
-        self.assertSetEqual(self.game._get_default_moves('white_knight', (1, 2), self.state),
+        self.assertSetEqual(self.game._get_normal_moves('white_knight', (1, 2), self.state),
                             {((1, 2), (0, 0)), ((1, 2), (0, 4)), ((1, 2), (2, 0)), ((1, 2), (2, 4)), ((1, 2), (3, 1))})
 
     def test__is_attacked(self):
@@ -122,6 +123,19 @@ class TestGetLegalMoves(unittest.TestCase):
         self.state.player = 'black'
         self.assertIn(((3, 4), (2, 4)), self.game._get_pseudolegal_moves(self.state))
         self.assertNotIn(((3, 4), (2, 4)), self.game.get_legal_moves(self.state))
+
+    # def testing(self):
+    #     self.assertEqual(tuple(tuple(row) for row in [[1, 2], [3, 4]]), ((1, 2), (3, 4)))
+    def test_repetition(self):
+        old_state = State(c.DEFAULT_POSITION)
+        new_state = State(c.DEFAULT_POSITION)
+        Game._add_repetition(new_state, old_state)
+        old_state = copy.deepcopy(new_state)
+        Game._add_repetition(new_state, old_state)
+        old_state = copy.deepcopy(new_state)
+        Game._add_repetition(new_state, old_state)
+        print(new_state.repetition_counter)
+        self.assertEqual(new_state.winner, 'draw')
 
 
 if __name__ == '__main__':

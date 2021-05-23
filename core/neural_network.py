@@ -4,16 +4,20 @@ from tensorflow import keras
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, Input, BatchNormalization, Activation, Add
 import os
 import math
-from typing import Optional, Dict, Tuple
-from chess.game import Game, State
-from chess import constants as c
+from typing import Optional, Dict, Tuple, Any
+# import time
+
+from game import Game, State
+import constants as c
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class NNet:
-    def __init__(self, epochs: int = c.DEFAULT_EPOCHS, learning_rate=c.DEFAULT_LEARNING_RATE,
-                 batch_size=c.DEFAULT_BATCH_SIZE, structure=c.DEFAULT_STRUCTURE, load_data=True):
+    def __init__(self, epochs: int = c.DEFAULT_EPOCHS, learning_rate: float = c.DEFAULT_LEARNING_RATE,
+                 batch_size: int = c.DEFAULT_BATCH_SIZE, structure: str = c.DEFAULT_STRUCTURE,
+                 load_data: bool = True):
 
         self.epochs = epochs
         self.batch_size = batch_size
@@ -23,43 +27,85 @@ class NNet:
 
     @classmethod
     def _get_model(cls, learning_rate: float, load_data: bool, structure: str) -> keras.Model:
-        inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
-        x = Conv2D(filters=256, kernel_size=(3, 3), padding='same')(inputs)
-        x = BatchNormalization(axis=3)(x)
-        x = Activation('relu')(x)
+        if structure == 'structure4':
+            inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
+            x = Conv2D(filters=192, kernel_size=(3, 3), padding='same')(inputs)
+            x = BatchNormalization(axis=3)(x)
+            x = Activation('relu')(x)
 
-        for _ in range(8):
-            x = cls._res_net(inputs=x, filters=256, kernel_size=(3, 3))
+            for _ in range(5):
+                x = cls._res_net(inputs=x, filters=192, kernel_size=(3, 3))
 
-        policy = Conv2D(filters=256, kernel_size=(3, 3), padding='valid')(x)
-        policy = BatchNormalization(axis=3)(policy)
-        policy = Activation('relu')(policy)
-        policy = Flatten()(policy)
-        policy = Dense(256, activation='relu')(policy)
-        policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
+            policy = Conv2D(filters=192, kernel_size=(3, 3), padding='valid')(x)
+            policy = BatchNormalization(axis=3)(policy)
+            policy = Activation('relu')(policy)
+            policy = Flatten()(policy)
+            policy = Dense(256, activation='relu')(policy)
+            policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
 
-        value = Flatten()(x)
-        value = Dense(64, activation='relu')(value)
-        value = Dense(1, activation='sigmoid', name='value')(value)
+            value = Conv2D(filters=128, kernel_size=(3, 3), padding='valid')(x)
+            value = BatchNormalization(axis=3)(value)
+            value = Activation('relu')(value)
+            value = Flatten()(value)
+            value = Dense(64, activation='relu')(value)
+            value = Dense(1, activation='sigmoid', name='value')(value)
 
-        model = keras.Model(inputs=inputs, outputs=[policy, value])
+            model = keras.Model(inputs=inputs, outputs=[policy, value])
 
-        model.compile(
-            optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
-            loss={'value': 'mean_squared_error',
-                  'policy': 'categorical_crossentropy'}
-        )
+            model.compile(
+                optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
+                loss={'value': 'mean_squared_error',
+                      'policy': 'categorical_crossentropy'}
+            )
 
-        if load_data:
-            try:
-                model.load_weights(f'weights/{structure}/').expect_partial()
-            except ValueError:
-                print('No saved weights found')
+            if load_data:
+                try:
+                    model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
+                except ValueError:
+                    print('No saved weights found')
 
-        return model
+            return model
+
+        if structure == 'structure3':
+            inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
+            x = Conv2D(filters=256, kernel_size=(3, 3), padding='same')(inputs)
+            x = BatchNormalization(axis=3)(x)
+            x = Activation('relu')(x)
+
+            for _ in range(5):
+                x = cls._res_net(inputs=x, filters=256, kernel_size=(3, 3))
+
+            policy = Conv2D(filters=256, kernel_size=(3, 3), padding='valid')(x)
+            policy = BatchNormalization(axis=3)(policy)
+            policy = Activation('relu')(policy)
+            policy = Flatten()(policy)
+            policy = Dense(256, activation='relu')(policy)
+            policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
+
+            value = Conv2D(filters=128, kernel_size=(3, 3), padding='valid')(x)
+            value = BatchNormalization(axis=3)(value)
+            value = Activation('relu')(value)
+            value = Flatten()(value)
+            value = Dense(1, activation='sigmoid', name='value')(value)
+
+            model = keras.Model(inputs=inputs, outputs=[policy, value])
+
+            model.compile(
+                optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
+                loss={'value': 'mean_squared_error',
+                      'policy': 'categorical_crossentropy'}
+            )
+
+            if load_data:
+                try:
+                    model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
+                except ValueError:
+                    print('No saved weights found')
+
+            return model
 
     @staticmethod
-    def _res_net(inputs, filters, kernel_size):
+    def _res_net(inputs: Any, filters: int, kernel_size: tuple) -> Any:
         x_shortcut = inputs
 
         x = Conv2D(filters=filters, kernel_size=kernel_size, padding='same')(inputs)
@@ -77,17 +123,23 @@ class NNet:
         x_train = np.array([self._to_binary_state(example[0]) for example in examples])
         y_policy = np.array([self._to_policy_vector(example[1][0], example[0].player) for example in examples])
         y_value = np.array([self._get_value(example[1][1], example[0].player) for example in examples])
+        print(sum(y_value))
 
         self.model.fit(x=x_train, y={'policy': y_policy, 'value': y_value},
                        epochs=self.epochs, batch_size=self.batch_size, shuffle=True)
         if save_data:
-            self.model.save_weights(f'weights/{self.structure}/')
+            self.model.save_weights(f'{parent_dir}\\weights\\{self.structure}\\')
 
     def prediction(self, state: State) -> Tuple[dict, float]:
+        # start = time.time()
         binary_state = self._to_binary_state(state)
-        prediction = self.model.predict(np.array([binary_state]))
+        # prediction = self.model.predict(np.array([binary_state]))
+        prediction = self.model(np.array([binary_state]))
         policy = self._get_policy(prediction[0][0], state)
+
         value = prediction[1][0][0]
+
+        # print(f'prediction took {time.time()-start}s')
         return policy, value
 
     # policy vectors are from the perspective of the player making the move
@@ -114,6 +166,7 @@ class NNet:
 
     @staticmethod
     def _get_value(evaluation, player):
+        evaluation *= c.ALPHA_SIGMOID
         value = 1 / (1 + math.exp(-evaluation))
         if player == 'black':
             value = 1 - value
@@ -121,7 +174,7 @@ class NNet:
 
     # binary states are from the perspective of the player making the move
     @classmethod
-    def _to_binary_state(cls, state) -> np.array:
+    def _to_binary_state(cls, state: State) -> np.array:
         black = state.player == 'black'
         bin_state = np.zeros(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
         for row in range(c.ROWS):
@@ -147,7 +200,7 @@ class NNet:
         return bin_state
 
     @staticmethod
-    def _piece_index(piece) -> Optional[tuple]:
+    def _piece_index(piece: str) -> Optional[tuple]:
         if piece == 'empty':
             return None
         piece = piece.split('_')

@@ -3,7 +3,7 @@ from mysql.connector import Error
 import pandas as pd
 from typing import List, Optional
 
-from chess import constants as c
+import constants as c
 
 
 class Connector:
@@ -71,7 +71,20 @@ class Connector:
         )
 
 
-if __name__ == '__main__':
-    pass
-    # db = Connector()
-    # db._create_training_data_table(c.DEFAULT_TABLE)
+
+#     @staticmethod
+#     def _truncate_fen(fen_string: str) -> str:
+#         fen_list = fen_string.split(' ')
+#         return ' '.join(fen_list[:4])
+#
+# from sqlalchemy import create_engine
+#
+# if __name__ == '__main__':
+#     engine = create_engine("mysql+mysqldb://{user}:{pw}@{host}/{db}"
+#                            .format(host=c.HOST_NAME, db=c.DATABASE, user=c.USER_NAME, pw=c.PASSWORD))
+#
+#     db = Connector()
+#     df = db.get_data(limit=None, table='training_data0')
+#     df['state'] = df['state'].map(lambda state: db._truncate_fen(state))
+#     df.drop_duplicates(subset=['state'])
+#     df.to_sql('training_data3', engine, if_exists='append')
