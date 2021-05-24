@@ -1,7 +1,9 @@
 import copy
 import unittest
-from chess.game import Game, State
-from chess import constants as c
+from core.game import Game, State
+from core import trainer
+from core.neural_network import NNet
+from core import constants as c
 
 
 class TestImportPosition(unittest.TestCase):
@@ -124,8 +126,6 @@ class TestGetLegalMoves(unittest.TestCase):
         self.assertIn(((3, 4), (2, 4)), self.game._get_pseudolegal_moves(self.state))
         self.assertNotIn(((3, 4), (2, 4)), self.game.get_legal_moves(self.state))
 
-    # def testing(self):
-    #     self.assertEqual(tuple(tuple(row) for row in [[1, 2], [3, 4]]), ((1, 2), (3, 4)))
     def test_repetition(self):
         old_state = State(c.DEFAULT_POSITION)
         new_state = State(c.DEFAULT_POSITION)
@@ -136,6 +136,30 @@ class TestGetLegalMoves(unittest.TestCase):
         Game._add_repetition(new_state, old_state)
         print(new_state.repetition_counter)
         self.assertEqual(new_state.winner, 'draw')
+
+
+class TestConversions(unittest.TestCase):
+    def test__to_algebraic(self):
+        self.assertEqual(trainer._to_algebraic(((0, 1), (2, 3))), 'b8d6')
+
+    def test__from_algebraic(self):
+        self.assertEqual(trainer._from_algebraic('b8d6'), ((0, 1), (2, 3)))
+
+    def test_policy1(self):
+        state = State(c.DEFAULT_POSITION)
+        move = ((6, 2), (4, 2))
+        self.assertEqual(NNet._get_policy(NNet._to_policy_vector(move, 'white'), state)[move], 1)
+
+    def test_policy2(self):
+        game = Game()
+        game.make_move((6, 2), (4, 2))
+        move = ((1, 2), (3, 2))
+        self.assertEqual(NNet._get_policy(NNet._to_policy_vector(move, 'black'), game.state)[move], 1)
+
+    def test_prediction(self):
+        nn = NNet()
+        state = State(c.DEFAULT_POSITION)
+        self.assertIsInstance(nn.prediction(state), tuple)
 
 
 if __name__ == '__main__':

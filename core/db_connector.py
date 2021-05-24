@@ -7,6 +7,9 @@ import constants as c
 
 
 class Connector:
+    """
+    Allows inserting and retrieving training data from a MySQL database.
+    """
     def __init__(self):
         self.connection = None
         try:
@@ -20,6 +23,12 @@ class Connector:
             print(f"The error '{e}' occurred")
 
     def insert_examples(self, examples: List[tuple], table: str) -> None:
+        """
+        Inserts training examples into a database table. A new table is created if none with the given name exists.
+
+        :param examples: List of examples as List[(state,(policy, value))]
+        :param table: Name of the database table
+        """
         self._create_training_data_table(table)
         for ex in examples:
             self._send_query(
@@ -27,9 +36,16 @@ class Connector:
                 f"VALUES ('{ex[0]}', '{ex[1][0]}', '{ex[1][1]}');",
                 print_out_errors=False
             )
-        print('inserted examples')
+        print(f'Inserted {len(examples)} examples.')
 
     def get_data(self, limit: Optional[int], table: str) -> pd.DataFrame:
+        """
+        Returns a random sample of training examples as s pandas DataFrame.
+
+        :param limit: Number of examples, None gives all examples in the table
+        :param table: Name of the database table
+        :return: Pandas DataFrame with examples as ['state', 'move', 'val']
+        """
         return self._retrieve_data(
             f"SELECT state, move, val FROM {table} ORDER BY RAND() {f'LIMIT {limit}' if limit else ''};"
         )
@@ -72,19 +88,3 @@ class Connector:
 
 
 
-#     @staticmethod
-#     def _truncate_fen(fen_string: str) -> str:
-#         fen_list = fen_string.split(' ')
-#         return ' '.join(fen_list[:4])
-#
-# from sqlalchemy import create_engine
-#
-# if __name__ == '__main__':
-#     engine = create_engine("mysql+mysqldb://{user}:{pw}@{host}/{db}"
-#                            .format(host=c.HOST_NAME, db=c.DATABASE, user=c.USER_NAME, pw=c.PASSWORD))
-#
-#     db = Connector()
-#     df = db.get_data(limit=None, table='training_data0')
-#     df['state'] = df['state'].map(lambda state: db._truncate_fen(state))
-#     df.drop_duplicates(subset=['state'])
-#     df.to_sql('training_data3', engine, if_exists='append')

@@ -5,7 +5,6 @@ from tensorflow.keras.layers import Dense, Flatten, Conv2D, Input, BatchNormaliz
 import os
 import math
 from typing import Optional, Dict, Tuple, Any
-# import time
 
 from game import Game, State
 import constants as c
@@ -15,6 +14,10 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class NNet:
+    """
+    Neural network consisting of residual convolutional layers splitting into policy and value outputs.
+    """
+
     def __init__(self, epochs: int = c.DEFAULT_EPOCHS, learning_rate: float = c.DEFAULT_LEARNING_RATE,
                  batch_size: int = c.DEFAULT_BATCH_SIZE, structure: str = c.DEFAULT_STRUCTURE,
                  load_data: bool = True):
@@ -27,82 +30,44 @@ class NNet:
 
     @classmethod
     def _get_model(cls, learning_rate: float, load_data: bool, structure: str) -> keras.Model:
-        if structure == 'structure4':
-            inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
-            x = Conv2D(filters=192, kernel_size=(3, 3), padding='same')(inputs)
-            x = BatchNormalization(axis=3)(x)
-            x = Activation('relu')(x)
 
-            for _ in range(5):
-                x = cls._res_net(inputs=x, filters=192, kernel_size=(3, 3))
+        inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
 
-            policy = Conv2D(filters=192, kernel_size=(3, 3), padding='valid')(x)
-            policy = BatchNormalization(axis=3)(policy)
-            policy = Activation('relu')(policy)
-            policy = Flatten()(policy)
-            policy = Dense(256, activation='relu')(policy)
-            policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
+        x = Conv2D(filters=256, kernel_size=(3, 3), padding='same')(inputs)
+        x = BatchNormalization(axis=3)(x)
+        x = Activation('relu')(x)
 
-            value = Conv2D(filters=128, kernel_size=(3, 3), padding='valid')(x)
-            value = BatchNormalization(axis=3)(value)
-            value = Activation('relu')(value)
-            value = Flatten()(value)
-            value = Dense(64, activation='relu')(value)
-            value = Dense(1, activation='sigmoid', name='value')(value)
+        for _ in range(5):
+            x = cls._res_net(inputs=x, filters=256, kernel_size=(3, 3))
 
-            model = keras.Model(inputs=inputs, outputs=[policy, value])
+        policy = Conv2D(filters=256, kernel_size=(3, 3), padding='valid')(x)
+        policy = BatchNormalization(axis=3)(policy)
+        policy = Activation('relu')(policy)
+        policy = Flatten()(policy)
+        policy = Dense(256, activation='relu')(policy)
+        policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
 
-            model.compile(
-                optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
-                loss={'value': 'mean_squared_error',
-                      'policy': 'categorical_crossentropy'}
-            )
+        value = Conv2D(filters=128, kernel_size=(3, 3), padding='valid')(x)
+        value = BatchNormalization(axis=3)(value)
+        value = Activation('relu')(value)
+        value = Flatten()(value)
+        value = Dense(1, activation='sigmoid', name='value')(value)
 
-            if load_data:
-                try:
-                    model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
-                except ValueError:
-                    print('No saved weights found')
+        model = keras.Model(inputs=inputs, outputs=[policy, value])
 
-            return model
+        model.compile(
+            optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
+            loss={'value': 'mean_squared_error',
+                  'policy': 'categorical_crossentropy'}
+        )
 
-        if structure == 'structure3':
-            inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
-            x = Conv2D(filters=256, kernel_size=(3, 3), padding='same')(inputs)
-            x = BatchNormalization(axis=3)(x)
-            x = Activation('relu')(x)
+        if load_data:
+            try:
+                model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
+            except ValueError:
+                print('No saved weights found')
 
-            for _ in range(5):
-                x = cls._res_net(inputs=x, filters=256, kernel_size=(3, 3))
-
-            policy = Conv2D(filters=256, kernel_size=(3, 3), padding='valid')(x)
-            policy = BatchNormalization(axis=3)(policy)
-            policy = Activation('relu')(policy)
-            policy = Flatten()(policy)
-            policy = Dense(256, activation='relu')(policy)
-            policy = Dense((c.ROWS * c.COLUMNS) ** 2, activation='softmax', name='policy')(policy)
-
-            value = Conv2D(filters=128, kernel_size=(3, 3), padding='valid')(x)
-            value = BatchNormalization(axis=3)(value)
-            value = Activation('relu')(value)
-            value = Flatten()(value)
-            value = Dense(1, activation='sigmoid', name='value')(value)
-
-            model = keras.Model(inputs=inputs, outputs=[policy, value])
-
-            model.compile(
-                optimizer=tf.optimizers.Adam(learning_rate=learning_rate),
-                loss={'value': 'mean_squared_error',
-                      'policy': 'categorical_crossentropy'}
-            )
-
-            if load_data:
-                try:
-                    model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
-                except ValueError:
-                    print('No saved weights found')
-
-            return model
+        return model
 
     @staticmethod
     def _res_net(inputs: Any, filters: int, kernel_size: tuple) -> Any:
@@ -120,10 +85,15 @@ class NNet:
         return x
 
     def train(self, examples: list, save_data=False) -> None:
+        """
+        Trains the neural network from a list of training examples.
+
+        :param examples: Training data as List[(state,(policy,value))]
+        :param save_data: Always saves the new weights if True
+        """
         x_train = np.array([self._to_binary_state(example[0]) for example in examples])
         y_policy = np.array([self._to_policy_vector(example[1][0], example[0].player) for example in examples])
         y_value = np.array([self._get_value(example[1][1], example[0].player) for example in examples])
-        print(sum(y_value))
 
         self.model.fit(x=x_train, y={'policy': y_policy, 'value': y_value},
                        epochs=self.epochs, batch_size=self.batch_size, shuffle=True)
@@ -131,15 +101,18 @@ class NNet:
             self.model.save_weights(f'{parent_dir}\\weights\\{self.structure}\\')
 
     def prediction(self, state: State) -> Tuple[dict, float]:
-        # start = time.time()
+        """
+        Returns a policy and value prediction for a given state. Value is from the perspective of the player making
+        the next move.
+
+        :param state: State to evaluate
+        :return: (policy, vector). Policy is given as probability vector and value between 0 and 1.
+        """
         binary_state = self._to_binary_state(state)
-        # prediction = self.model.predict(np.array([binary_state]))
-        prediction = self.model(np.array([binary_state]))
+        prediction = self.model.predict(np.array([binary_state]))
+
         policy = self._get_policy(prediction[0][0], state)
-
         value = prediction[1][0][0]
-
-        # print(f'prediction took {time.time()-start}s')
         return policy, value
 
     # policy vectors are from the perspective of the player making the move
@@ -217,5 +190,5 @@ class NNet:
 
 if __name__ == '__main__':
     nn = NNet()
-    game = Game()
+    game = Game('8/1P3k2/8/8/8/8/4K3/8 w - - 0 1')
     print(nn.prediction(game.state))

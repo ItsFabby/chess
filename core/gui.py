@@ -16,13 +16,22 @@ image_dir = f'{os.path.dirname(os.path.abspath(__file__))}\\images'
 
 
 class GUI(tk.Frame):
-    def __init__(self, fen_position: str = c.DEFAULT_POSITION):
+    """
+    GUI for chess allowing to make moves, set the players to 'Human' or 'Neural Network' and restarting the game.
+    """
+    def __init__(self, ai_width: int, ai_depth: int, fen_position: str = c.DEFAULT_POSITION,  sleep_time: int = 0):
         super().__init__()
         self.game = Game(fen_position)
+
         start = time.time()
         self.nn = NNet()
-        print('loading nn takes: ', time.time() - start)
+        print(f'Loading nn took: {time.time() - start}s')
+
         self.images = self._import_images()
+
+        self.ai_width = ai_width
+        self.ai_depth = ai_depth
+        self.sleep_time = sleep_time
 
         self.selected = None
         self.legal_moves = self.game.game_legal_moves()
@@ -144,16 +153,17 @@ class GUI(tk.Frame):
 
     def _ai_move(self) -> None:
         start = time.time()
-        # move = ai.move_max(self.game.state, self.nn)
-        move = ai.fast_tree_search(self.game.state, self.nn, 2, 2)
+        move = ai.fast_tree_search(self.game.state, self.nn, self.ai_width, self.ai_depth)
         print('Calculating move took ', time.time() - start)
+
         if move in self.legal_moves:
             self.game.make_move(move[0], move[1])
             self._highlight_last_move(move[0], move[1])
+
         self.legal_moves = self.game.game_legal_moves()
         self._update_board()
         self.ai_lock = False
-        time.sleep(0)
+        time.sleep(self.sleep_time)
         self._check_ai()
 
     def _update_header(self) -> None:

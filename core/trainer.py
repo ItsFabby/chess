@@ -67,7 +67,7 @@ def gen_examples(randomness: float = 0.7, randomness_decline: float = 0.95, max_
 def train(table: str = c.DEFAULT_TABLE, structure: str = c.DEFAULT_STRUCTURE,
           learning_rate: float = c.DEFAULT_LEARNING_RATE, epochs: int = c.DEFAULT_EPOCHS,
           batch_size: int = c.DEFAULT_BATCH_SIZE, matches: int = 10,
-          threshold: int = c.DEFAULT_THRESHOLD, data_limit: Optional[int] = 600000) -> None:
+          threshold: int = c.DEFAULT_THRESHOLD, data_limit: Optional[int] = 50000) -> None:
     """
     Trains the network with stored example sin the database. Before saving the new weights, the new network simulates
     a series of game vs. the old network, only accepting the new network if a certain number of matches is won.
@@ -153,13 +153,3 @@ def _value(evaluation: dict) -> float:
 def _truncate_fen(fen_string: str) -> str:
     fen_list = fen_string.split(' ')
     return ' '.join(fen_list[:4])
-
-
-if __name__ == '__main__':
-    # while True:
-    #     gen_examples(table='training_data1')
-    while True:
-        train(data_limit=50000, epochs=1, learning_rate=0.000003, batch_size=1024, matches=0, threshold=-1,
-              table='training_data4')
-    # train(data_limit=500, epochs=1, learning_rate=0.01, batch_size=256, matches=4, threshold=-1)
-    # _match_series(NNet(), NNet(load_data=False))

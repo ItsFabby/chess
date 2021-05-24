@@ -49,7 +49,7 @@ class Game:
         if cls.get_legal_moves(state):
             return None
         if cls.is_check(state):
-            return cls._swap_player(state.player)
+            return cls.swap_player(state.player)
         return 'draw'
 
     @classmethod
@@ -423,7 +423,7 @@ class Game:
         raise NameError('Piece belongs to no player!')
 
     @staticmethod
-    def _swap_player(player: str) -> str:
+    def swap_player(player: str) -> str:
         return 'black' if player == 'white' else 'white'
 
 
