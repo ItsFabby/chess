@@ -18,7 +18,7 @@ Using the pretrained network:
   
 Training a network:
   - Install [Stockfish](https://stockfishchess.org/) and set up the correct path in core/constants.py
-  - Set up a MySQL database and adjust the login credentials in 'constants'(core/constants.py)
+  - Set up a MySQL database and adjust the login credentials in `constants`(core/constants.py)
   - Generate training data using gen\_examples() in core/trainer.py
   - Train the network using train() in core/trainer.py
   
