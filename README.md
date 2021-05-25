@@ -9,3 +9,10 @@ This project trains a neural network on a standard home computer, by scaling dow
 - [Tensorflow](https://www.tensorflow.org/)
 - [Stockfish](https://stockfishchess.org/)
 - [MySQL](https://www.mysql.com/)
+
+## Getting Started
+- Install the prequisites listes in requirement.txt
+- Using the pretrained network:
+- - Run __main__.py with a python interpreter.
+- Training a network:
+-- 
