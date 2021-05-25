@@ -1,3 +1,4 @@
+"""Game"""
 # position in FEN notation
 DEFAULT_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 EMPTY_BOARD = '8/8/8/8/8/8/8/8 w - -'
@@ -9,6 +10,7 @@ BLACK_PIECES = ['black_pawn', 'black_knight', 'black_bishop', 'black_rook', 'bla
 COLUMNS = 8
 ROWS = 8
 
+"""GUI"""
 SQUARE_SIZE = 64
 COLOR1 = '#b58863'
 COLOR2 = '#f0d9b5'
