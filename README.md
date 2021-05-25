@@ -11,10 +11,10 @@ This project trains a neural network on a standard home computer, by scaling dow
 - [MySQL](https://www.mysql.com/)
 
 ## Getting Started
-- Install the prequisites listes in requirement.txt \
+- Install the prequisites listes in requirement.txt
 
 Using the pretrained network:
-  - Run \_\_main\_\_.py with a python interpreter. \
+  - Run \_\_main\_\_.py with a python interpreter.
   
 Training a network:
   - Install [Stockfish](https://stockfishchess.org/) and set up the correct path in core/constants.py
