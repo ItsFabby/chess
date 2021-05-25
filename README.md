@@ -13,6 +13,6 @@ This project trains a neural network on a standard home computer, by scaling dow
 ## Getting Started
 - Install the prequisites listes in requirement.txt
 - Using the pretrained network:
-- - Run __main__.py with a python interpreter.
+  - Run __main__.py with a python interpreter.
 - Training a network:
 -- 
