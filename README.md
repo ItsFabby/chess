@@ -22,7 +22,7 @@ Training a network:
   - Generate training data using `gen_examples()` in `core/trainer.py`.
   - Train the network using `train()` in `core/trainer.py`.
   
-  Make sure to change model\_name when training a new network (either by giving a keyword argument or by changing the default in core/constants.py), or the old weights will be overwritten! \
+  Make sure to change `model_name` when training a new network (either by giving a keyword argument or by changing the default in `core/constants.py`), or the old weights will be overwritten! \
   Feel free to change the structure of the network in `core/neural_network.py`.
 
 ## License
