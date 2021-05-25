@@ -28,7 +28,7 @@ def gen_examples(randomness: float = 0.7, randomness_decline: float = 0.95, max_
     :param max_moves: Stops the simulated game early to prevent too long end games.
     """
     game = Game()
-    stockfish = Stockfish()
+    stockfish = Stockfish(c.STOCKFISH_PATH)
     examples = []
     moves = []
     for _ in range(max_moves):

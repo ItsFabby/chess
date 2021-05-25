@@ -21,6 +21,8 @@ DEFAULT_MODEL_NAME = 'model0'
 ALPHA_SIGMOID = 0.4
 
 """Training"""
+STOCKFISH_PATH = 'C:/.../stockfish_13_win_x64_bmi2/stockfish_13_win_x64_bmi2.exe'
+
 DEFAULT_LEARNING_RATE = 0.00003
 DEFAULT_BATCH_SIZE = 256
 DEFAULT_EPOCHS = 1
