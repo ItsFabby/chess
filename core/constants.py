@@ -14,7 +14,7 @@ COLOR1 = '#b58863'
 COLOR2 = '#f0d9b5'
 
 """Neural Network"""
-DEFAULT_STRUCTURE = 'structure0'
+DEFAULT_MODEL_NAME = 'model0'
 
 ALPHA_SIGMOID = 0.4
 

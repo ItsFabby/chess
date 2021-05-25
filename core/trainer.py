@@ -64,7 +64,7 @@ def gen_examples(randomness: float = 0.7, randomness_decline: float = 0.95, max_
     db.insert_examples(examples, table)
 
 
-def train(table: str = c.DEFAULT_TABLE, structure: str = c.DEFAULT_STRUCTURE,
+def train(table: str = c.DEFAULT_TABLE, model_name: str = c.DEFAULT_MODEL_NAME,
           learning_rate: float = c.DEFAULT_LEARNING_RATE, epochs: int = c.DEFAULT_EPOCHS,
           batch_size: int = c.DEFAULT_BATCH_SIZE, matches: int = 10,
           threshold: int = c.DEFAULT_THRESHOLD, data_limit: Optional[int] = 50000) -> None:
@@ -73,7 +73,7 @@ def train(table: str = c.DEFAULT_TABLE, structure: str = c.DEFAULT_STRUCTURE,
     a series of game vs. the old network, only accepting the new network if a certain number of matches is won.
     
     :param table: Database table were examples were stored with gen_examples(). 
-    :param structure: Determines the save folder for the weights of the neural network.
+    :param model_name: Determines the save folder for the weights of the neural network.
     :param learning_rate: Network learning rate.
     :param epochs: Number of training epochs.
     :param batch_size: Batch size in training.
@@ -81,13 +81,13 @@ def train(table: str = c.DEFAULT_TABLE, structure: str = c.DEFAULT_STRUCTURE,
     :param threshold: Minimum difference of wins and losses from the matches to accept the new network.   
     :param data_limit: Number of examples used to train. Examples are drawn uniformly. None for no limit.
     """
-    new_net = NNet(learning_rate=learning_rate, epochs=epochs, batch_size=batch_size, structure=structure)
-    old_net = NNet(structure=structure)
+    new_net = NNet(learning_rate=learning_rate, epochs=epochs, batch_size=batch_size, model_name=model_name)
+    old_net = NNet(model_name=model_name)
     db = Connector()
     examples = _df_to_examples(db.get_data(data_limit, table))
     new_net.train(examples)
     score = _match_series(nnet1=new_net, nnet2=old_net, matches=matches)
-    _evaluate_score(new_net, score, structure, threshold)
+    _evaluate_score(new_net, score, model_name, threshold)
 
 
 def _match_series(nnet1: NNet, nnet2: NNet, matches: int = 20) -> int:
@@ -135,9 +135,9 @@ def _df_to_examples(df: pd.DataFrame) -> list:
     return examples
 
 
-def _evaluate_score(nnet: NNet, score: int, structure: str, threshold: int) -> None:
+def _evaluate_score(nnet: NNet, score: int, model_name: str, threshold: int) -> None:
     if score > threshold:
-        nnet.model.save_weights(f'{parent_dir}\\weights\\{structure}\\')
+        nnet.model.save_weights(f'{parent_dir}\\weights\\{model_name}\\')
         print(f'new model accepted with score: {score}')
     else:
         print(f'new model rejected with score: {score}')

@@ -19,17 +19,17 @@ class NNet:
     """
 
     def __init__(self, epochs: int = c.DEFAULT_EPOCHS, learning_rate: float = c.DEFAULT_LEARNING_RATE,
-                 batch_size: int = c.DEFAULT_BATCH_SIZE, structure: str = c.DEFAULT_STRUCTURE,
+                 batch_size: int = c.DEFAULT_BATCH_SIZE, model_name: str = c.DEFAULT_MODEL_NAME,
                  load_data: bool = True):
 
         self.epochs = epochs
         self.batch_size = batch_size
 
-        self.structure = structure
-        self.model = self._get_model(learning_rate, load_data, structure)
+        self.model_name = model_name
+        self.model = self._get_model(learning_rate, load_data, model_name)
 
     @classmethod
-    def _get_model(cls, learning_rate: float, load_data: bool, structure: str) -> keras.Model:
+    def _get_model(cls, learning_rate: float, load_data: bool, model_name: str) -> keras.Model:
 
         inputs = Input(shape=(c.ROWS, c.COLUMNS, 6 * 2 + 6))
 
@@ -63,7 +63,7 @@ class NNet:
 
         if load_data:
             try:
-                model.load_weights(f'{parent_dir}\\weights\\{structure}\\').expect_partial()
+                model.load_weights(f'{parent_dir}\\weights\\{model_name}\\').expect_partial()
             except ValueError:
                 print('No saved weights found')
 
@@ -98,7 +98,7 @@ class NNet:
         self.model.fit(x=x_train, y={'policy': y_policy, 'value': y_value},
                        epochs=self.epochs, batch_size=self.batch_size, shuffle=True)
         if save_data:
-            self.model.save_weights(f'{parent_dir}\\weights\\{self.structure}\\')
+            self.model.save_weights(f'{parent_dir}\\weights\\{self.model_name}\\')
 
     def prediction(self, state: State) -> Tuple[dict, float]:
         """
