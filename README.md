@@ -14,7 +14,7 @@ This project trains a neural network on a standard home computer, by scaling dow
 - Install the prerequisites listed in `requirement.txt`
 
 Using the pretrained network:
-  - Run `__main__.py` with a python interpreter.
+  - Run `__main__.py` with a Python interpreter.
   
 Training a network:
   - Install [Stockfish](https://stockfishchess.org/) and set up the correct path in `core/constants.py`.
