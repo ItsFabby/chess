@@ -7,3 +7,4 @@ This project trains a neural network on a standard home computer, by scaling dow
 
 ## Build With
 - [Tensorflow](https://www.tensorflow.org/)
+- [MySQL](https://www.mysql.com/)
