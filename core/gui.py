@@ -85,7 +85,7 @@ class GUI(tk.Frame):
 
     def _restart(self) -> None:
         self.game = Game()
-        self.board.delete('highlight')
+        self.board.delete('highlight', 'last_move')
         self.game.player = 'white'
         self.selected = None
         self.legal_moves = self.game.game_legal_moves()
@@ -241,4 +241,4 @@ class GUI(tk.Frame):
 
 
 if __name__ == '__main__':
-    gui = GUI()
+    gui = GUI(ai_width=2, ai_depth=2)
