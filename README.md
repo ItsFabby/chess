@@ -20,5 +20,5 @@ This project trains a neural network on a standard home computer, by scaling dow
   - Generate training data using gen\_examples() in core/trainer.py
   - Train the network using train() in core/trainer.py
   
-  Make sure to change model\_name (either by giving a keyword argument or by changing the default in core/constants.py)! \
+  Make sure to change model\_name when training a new network (either by giving a keyword argument or by changing the default in core/constants.py), or the old weights will be overwritten! 
   Feel free to change the structure of the network in core/neural\_network.py
