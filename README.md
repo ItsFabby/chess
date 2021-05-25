@@ -18,7 +18,6 @@ This project trains a neural network on a standard home computer, by scaling dow
   - Install [Stockfish](https://stockfishchess.org/) and set up the correct path in core/constants.py
   - Set up a MySQL database and adjust the login credentials in core/constants.py
   - Generate training data using gen\_examples() in core/trainer.py
-  - Train the network using train() in core/trainer.py
-
-  Make sure to change model\_name (either by giving a keyword argument or by changing the default in core/constants.py)!
+  - Train the network using train() in core/trainer.py \
+  Make sure to change model\_name (either by giving a keyword argument or by changing the default in core/constants.py)! \
   Feel free to change the structure of the network in core/neural\_network.py
